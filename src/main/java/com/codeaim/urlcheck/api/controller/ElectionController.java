@@ -18,7 +18,7 @@ import java.util.List;
 @ResponseBody
 public class ElectionController
 {
-    private IProbeRepository probeRepository;
+    private final IProbeRepository probeRepository;
 
     public ElectionController(
             IProbeRepository probeRepository
@@ -34,8 +34,8 @@ public class ElectionController
     }
 
     @RequestMapping(value = "/result", method = RequestMethod.POST)
-    public List<Result> createResults(@RequestBody ArrayList<Result> results)
+    public void createResults(@RequestBody ArrayList<Result> results)
     {
-        return probeRepository.createResults(results);
+        probeRepository.createResults(results);
     }
 }

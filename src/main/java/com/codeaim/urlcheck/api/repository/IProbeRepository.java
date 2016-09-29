@@ -10,5 +10,5 @@ import java.util.List;
 public interface IProbeRepository
 {
     List<Check> getCandidates(Probe probe);
-    List<Result> createResults(ArrayList<Result> results);
+    void createResults(ArrayList<Result> results);
 }
