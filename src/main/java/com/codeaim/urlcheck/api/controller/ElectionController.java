@@ -20,7 +20,8 @@ public class ElectionController
 {
     private final IProbeRepository probeRepository;
 
-    public ElectionController(
+    public ElectionController
+            (
             IProbeRepository probeRepository
     )
     {
