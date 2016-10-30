@@ -26,7 +26,7 @@ public class UserController
         this.userRepository = userRepository;
     }
 
-    @RequestMapping(value = "/{username}", method = RequestMethod.GET)
+    @RequestMapping(value = "/{username:.+}", method = RequestMethod.GET)
     public ResponseEntity<?> getUserByUsername
             (
                     @PathVariable(value = "username")

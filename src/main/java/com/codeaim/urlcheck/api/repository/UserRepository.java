@@ -26,7 +26,7 @@ public class UserRepository implements IUserRepository
     @Override
     public Optional<User> getUserByUsername(String username)
     {
-        String getUserByUsernameSql = "SELECT \"user\".id, \"user\".username, \"user\".email, \"user\".\"password\", string_agg(\"role\".\"name\", ',') AS \"roles\" FROM \"user\" INNER JOIN \"user_role\" ON \"user\".id = \"user_role\".user_id INNER JOIN \"role\" ON \"role\".id = \"user_role\".role_id WHERE \"user\".username = :username GROUP BY \"user\".id";
+        String getUserByUsernameSql = "SELECT \"user\".id, \"user\".username, \"user\".email, \"user\".\"password\", string_agg(\"role\".\"name\", ',') AS \"roles\" FROM \"user\" INNER JOIN \"user_role\" ON \"user\".id = \"user_role\".user_id INNER JOIN \"role\" ON \"role\".id = \"user_role\".role_id WHERE \"user\".username = :username OR \"user\".email = :username GROUP BY \"user\".id";
 
         MapSqlParameterSource parameters = new MapSqlParameterSource()
                 .addValue("username", username);
