@@ -7,4 +7,6 @@ import java.util.List;
 public interface ICheckRepository
 {
     List<Check> getChecks();
+
+    List<Check> getChecks(String username);
 }

@@ -5,6 +5,7 @@ import com.codeaim.urlcheck.api.model.Status;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.jdbc.core.RowMapper;
+import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 
 import java.util.List;
@@ -23,9 +24,23 @@ public class CheckRepository implements ICheckRepository
     @Override
     public List<Check> getChecks()
     {
-        String findAllSql = "SELECT id, name, url, status FROM \"check\"";
+        String getChecksSql = "SELECT id, name, url, status FROM \"check\"";
 
-        return this.namedParameterJdbcTemplate.query(findAllSql, mapCheck());
+        return this.namedParameterJdbcTemplate.query(getChecksSql, mapCheck());
+    }
+
+    @Override
+    public List<Check> getChecks(String username)
+    {
+        String getChecksByUsernameSql = "SELECT \"check\".id, name, url, status FROM \"check\" INNER JOIN \"user\" ON \"check\".user_id = \"user\".id WHERE \"user\".username = :username";
+
+        MapSqlParameterSource parameters = new MapSqlParameterSource()
+                .addValue("username", username);
+
+        return this.namedParameterJdbcTemplate.query(
+                getChecksByUsernameSql,
+                parameters,
+                mapCheck());
     }
 
     private RowMapper<Check> mapCheck()
