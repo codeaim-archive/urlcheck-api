@@ -1,9 +1,6 @@
 package com.codeaim.urlcheck.api.repository;
 
-import com.codeaim.urlcheck.api.model.Check;
-import com.codeaim.urlcheck.api.model.Probe;
-import com.codeaim.urlcheck.api.model.Result;
-import com.codeaim.urlcheck.api.model.Status;
+import com.codeaim.urlcheck.api.model.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.jdbc.core.RowMapper;
@@ -112,6 +109,47 @@ public class ProbeRepository implements IProbeRepository
 
         this.namedParameterJdbcTemplate
                 .update(updateSql, updateParameters);
+    }
+
+    @Override
+    public void expireResults(Expire expire)
+    {
+        String sql = ""
+                + "DELETE FROM \"result\" "
+                + "WHERE  \"result\".id IN (SELECT \"result\".id "
+                + "                       FROM   \"result\" "
+                + "                              INNER JOIN \"check\" "
+                + "                                      ON \"check\".id = \"result\".check_id "
+                + "                              INNER JOIN (SELECT \"check\".id "
+                + "                                                 AS check_id "
+                + "                                                 , "
+                + "                              Max(\"role\".result_retention_duration) "
+                + "                              AS "
+                + "                              maximum_result_retention_duration "
+                + "                                          FROM   \"check\" "
+                + "                                                 INNER JOIN \"user\" "
+                + "                                                         ON \"user\".id = "
+                + "                                                            \"check\".user_id "
+                + "                                                 INNER JOIN \"user_role\" "
+                + "                                                         ON \"user_role\".user_id "
+                + "                                                            = "
+                + "                                                            \"user\".id "
+                + "                                                 INNER JOIN \"role\" "
+                + "                                                         ON \"role\".id = "
+                + "                                                            \"user_role\".role_id "
+                + "                                          GROUP  BY \"check\".id) AS limits "
+                + "                                      ON limits.check_id = \"result\".check_id "
+                + "                       WHERE  ( \"result\".changed = false "
+                + "                                 OR \"result\".confirmation = false ) "
+                + "                          AND \"result\".created < ( "
+                + "                              Now() - limits.maximum_result_retention_duration ) "
+                + "                          AND \"result\".id <> \"check\".latest_result_id "
+                + "                       LIMIT :batchSize)";
+
+        SqlParameterSource parameters = new MapSqlParameterSource()
+                .addValue("batchSize", expire.getBatchSize());
+
+        this.namedParameterJdbcTemplate.update(sql, parameters);
     }
 
     private RowMapper<Check> mapCandidate()

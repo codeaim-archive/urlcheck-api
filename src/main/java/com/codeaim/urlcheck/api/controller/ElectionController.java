@@ -1,6 +1,7 @@
 package com.codeaim.urlcheck.api.controller;
 
 import com.codeaim.urlcheck.api.model.Check;
+import com.codeaim.urlcheck.api.model.Expire;
 import com.codeaim.urlcheck.api.model.Probe;
 import com.codeaim.urlcheck.api.model.Result;
 import com.codeaim.urlcheck.api.repository.IProbeRepository;
@@ -22,8 +23,8 @@ public class ElectionController
 
     public ElectionController
             (
-            IProbeRepository probeRepository
-    )
+                    IProbeRepository probeRepository
+            )
     {
         this.probeRepository = probeRepository;
     }
@@ -38,5 +39,11 @@ public class ElectionController
     public void createResults(@RequestBody ArrayList<Result> results)
     {
         probeRepository.createResults(results);
+    }
+
+    @RequestMapping(value = "/expire", method = RequestMethod.POST)
+    public void expireResults(@RequestBody Expire expire)
+    {
+        probeRepository.expireResults(expire);
     }
 }
