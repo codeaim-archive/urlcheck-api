@@ -7,6 +7,9 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
+import org.springframework.jdbc.core.namedparam.SqlParameterSource;
+import org.springframework.jdbc.support.GeneratedKeyHolder;
+import org.springframework.jdbc.support.KeyHolder;
 
 import java.util.List;
 
@@ -41,6 +44,39 @@ public class CheckRepository implements ICheckRepository
                 getChecksByUsernameSql,
                 parameters,
                 mapCheck());
+    }
+
+    @Override
+    public Check createCheck(Check check)
+    {
+        KeyHolder keyHolder = new GeneratedKeyHolder();
+
+        String sql = ""
+                + "INSERT INTO \"check\" "
+                + "VALUES      (default, "
+                + "             :user_id, "
+                + "             NULL, "
+                + "             :name, "
+                + "             :url, "
+                + "             NULL, "
+                + "             'UNKNOWN' :: status, "
+                + "             'WAITING' :: state, "
+                + "             Now(), "
+                + "             Now(), "
+                + "             Now(), "
+                + "             NULL, "
+                + "             :interval, "
+                + "             FALSE, "
+                + "             1);";
+
+        SqlParameterSource parameters = new MapSqlParameterSource()
+                .addValue("user_id", check.getUserId())
+                .addValue("name", check.getName())
+                .addValue("url", check.getUrl())
+                .addValue("interval", check.getInterval());
+
+        this.namedParameterJdbcTemplate.update(sql, parameters, keyHolder, new String[]{"id"});
+        return check.setId(keyHolder.getKey().longValue());
     }
 
     private RowMapper<Check> mapCheck()

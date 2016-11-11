@@ -9,4 +9,6 @@ public interface ICheckRepository
     List<Check> getChecks();
 
     List<Check> getChecks(String username);
+
+    Check createCheck(Check check);
 }
