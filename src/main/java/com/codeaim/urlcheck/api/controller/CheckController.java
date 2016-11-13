@@ -98,4 +98,31 @@ public class CheckController
             .notFound()
             .build();
     }
+
+    @RequestMapping(value = "/{username:.+}/{id}", method = RequestMethod.DELETE)
+    public ResponseEntity<?> deleteCheckById(
+            @PathVariable(value = "username")
+                    String username,
+            @PathVariable(value = "id")
+                    long id
+    )
+    {
+        Optional<Check> check = checkRepository
+                .getChecks(username)
+                .stream()
+                .filter(x -> x.getId() == id)
+                .findFirst();
+
+        if(check.isPresent()) {
+            checkRepository.deleteCheck(id);
+
+            return ResponseEntity
+                    .noContent()
+                    .build();
+        }
+
+        return ResponseEntity
+                .notFound()
+                .build();
+    }
 }

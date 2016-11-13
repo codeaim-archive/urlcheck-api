@@ -27,23 +27,24 @@ public class CheckRepository implements ICheckRepository
     @Override
     public List<Check> getChecks()
     {
-        String getChecksSql = "SELECT id, name, url, status FROM \"check\"";
+        String sql = "SELECT id, name, url, status FROM \"check\" ORDER BY created DESC;";
 
-        return this.namedParameterJdbcTemplate.query(getChecksSql, mapCheck());
+        return this.namedParameterJdbcTemplate.query(sql, mapCheck());
     }
 
     @Override
     public List<Check> getChecks(String username)
     {
-        String getChecksByUsernameSql = "SELECT \"check\".id, name, url, status FROM \"check\" INNER JOIN \"user\" ON \"check\".user_id = \"user\".id WHERE \"user\".username = :username";
+        String sql = "SELECT \"check\".id, name, url, status FROM \"check\" INNER JOIN \"user\" ON \"check\".user_id = \"user\".id WHERE \"user\".username = :username ORDER BY \"check\".created DESC;";
 
         MapSqlParameterSource parameters = new MapSqlParameterSource()
                 .addValue("username", username);
 
         return this.namedParameterJdbcTemplate.query(
-                getChecksByUsernameSql,
+                sql,
                 parameters,
-                mapCheck());
+                mapCheck()
+        );
     }
 
     @Override
@@ -75,8 +76,28 @@ public class CheckRepository implements ICheckRepository
                 .addValue("url", check.getUrl())
                 .addValue("interval", check.getInterval());
 
-        this.namedParameterJdbcTemplate.update(sql, parameters, keyHolder, new String[]{"id"});
+        this.namedParameterJdbcTemplate.update(
+                sql,
+                parameters,
+                keyHolder,
+                new String[]{"id"}
+        );
+
         return check.setId(keyHolder.getKey().longValue());
+    }
+
+    @Override
+    public void deleteCheck(long id)
+    {
+        String sql = "DELETE FROM \"check\" WHERE id = :id;";
+
+        SqlParameterSource parameters = new MapSqlParameterSource()
+                .addValue("id", id);
+
+        this.namedParameterJdbcTemplate.update(
+                sql,
+                parameters
+        );
     }
 
     private RowMapper<Check> mapCheck()

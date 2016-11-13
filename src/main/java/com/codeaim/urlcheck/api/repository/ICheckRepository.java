@@ -11,4 +11,6 @@ public interface ICheckRepository
     List<Check> getChecks(String username);
 
     Check createCheck(Check check);
+
+    void deleteCheck(long id);
 }
