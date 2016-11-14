@@ -10,9 +10,7 @@ import org.springframework.jdbc.core.namedparam.SqlParameterSource;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.sql.Timestamp;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -73,23 +71,19 @@ public class ProbeRepository implements IProbeRepository
     {
         String insertSql = "INSERT INTO result(check_id, previous_result_id, status, probe, status_code, response_time, changed, confirmation, created) VALUES(:check_id, :previous_result_id, :status::status, :probe, :status_code, :response_time, :changed, :confirmation, :created)";
 
-        SqlParameterSource[] insertParameters =
-                new SqlParameterSource[results.size()];
-
-        for (int i = 0; i < results.size(); i++)
-        {
-            Result result = results.get(i);
-            insertParameters[i] = new MapSqlParameterSource()
-                    .addValue("check_id", result.getCheckId())
-                    .addValue("previous_result_id", result.getPreviousResultId())
-                    .addValue("status", result.getStatus().toString())
-                    .addValue("probe", result.getProbe())
-                    .addValue("status_code", result.getStatusCode())
-                    .addValue("response_time", result.getResponseTime() != 0 ? result.getResponseTime() : null)
-                    .addValue("changed", result.isChanged())
-                    .addValue("confirmation", result.isConfirmation())
-                    .addValue("created", Timestamp.from(result.getCreated()));
-        }
+        SqlParameterSource[] insertParameters = results
+                .stream()
+                .map(result -> new MapSqlParameterSource()
+                        .addValue("check_id", result.getCheckId())
+                        .addValue("previous_result_id", result.getPreviousResultId())
+                        .addValue("status", result.getStatus().toString())
+                        .addValue("probe", result.getProbe())
+                        .addValue("status_code", result.getStatusCode())
+                        .addValue("response_time", result.getResponseTime() != 0 ? result.getResponseTime() : null)
+                        .addValue("changed", result.isChanged())
+                        .addValue("confirmation", result.isConfirmation())
+                        .addValue("created", Timestamp.from(result.getCreated())))
+                .toArray(SqlParameterSource[]::new);
 
         this.namedParameterJdbcTemplate.batchUpdate(insertSql, insertParameters);
 
@@ -181,11 +175,11 @@ public class ProbeRepository implements IProbeRepository
                 .setHeaders(getHeaders(rs.getString("headers")));
     }
 
-    private List<Header> getHeaders(String headersString)
+    private Set<Header> getHeaders(String headersString)
     {
         if (headersString != null && !headersString.isEmpty())
         {
-            List<Header> headers = new ArrayList<>();
+            Set<Header> headers = new HashSet<>();
 
             Matcher headerMatcher = Pattern
                     .compile("\"(?<name>.+?)\": \"(?<value>.*?)\"")
@@ -201,6 +195,6 @@ public class ProbeRepository implements IProbeRepository
             return headers;
         }
 
-        return Collections.emptyList();
+        return Collections.emptySet();
     }
 }

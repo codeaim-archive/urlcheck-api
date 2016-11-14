@@ -10,6 +10,7 @@ import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.jdbc.core.namedparam.SqlParameterSource;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.jdbc.support.KeyHolder;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -48,11 +49,12 @@ public class CheckRepository implements ICheckRepository
     }
 
     @Override
+    @Transactional
     public Check createCheck(Check check)
     {
         KeyHolder keyHolder = new GeneratedKeyHolder();
 
-        String sql = ""
+        String insertCheckSql = ""
                 + "INSERT INTO \"check\" "
                 + "VALUES      (default, "
                 + "             :user_id, "
@@ -70,20 +72,41 @@ public class CheckRepository implements ICheckRepository
                 + "             FALSE, "
                 + "             1);";
 
-        SqlParameterSource parameters = new MapSqlParameterSource()
+        SqlParameterSource insertCheckParameters = new MapSqlParameterSource()
                 .addValue("user_id", check.getUserId())
                 .addValue("name", check.getName())
                 .addValue("url", check.getUrl())
                 .addValue("interval", check.getInterval());
 
         this.namedParameterJdbcTemplate.update(
-                sql,
-                parameters,
+                insertCheckSql,
+                insertCheckParameters,
                 keyHolder,
                 new String[]{"id"}
         );
 
-        return check.setId(keyHolder.getKey().longValue());
+        check.setId(keyHolder
+                .getKey()
+                .longValue());
+
+        String insertHeaderSql = "INSERT INTO header(check_id, \"name\", \"value\") VALUES(:check_id, :name, :value)";
+
+        SqlParameterSource[] insertHeaderParameters = check
+                .getHeaders()
+                .stream()
+                .map(header -> new MapSqlParameterSource()
+                        .addValue("check_id", check.getId())
+                        .addValue("name", header.getName())
+                        .addValue("value", header.getValue()))
+                .toArray(SqlParameterSource[]::new);
+
+        this.namedParameterJdbcTemplate
+                .batchUpdate(
+                        insertHeaderSql,
+                        insertHeaderParameters
+                );
+
+        return check;
     }
 
     @Override
