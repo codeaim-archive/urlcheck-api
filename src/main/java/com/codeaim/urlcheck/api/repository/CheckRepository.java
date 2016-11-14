@@ -89,23 +89,25 @@ public class CheckRepository implements ICheckRepository
                 .getKey()
                 .longValue());
 
-        String insertHeaderSql = "INSERT INTO header(check_id, \"name\", \"value\") VALUES(:check_id, :name, :value)";
+        if (check.getHeaders() != null && check.getHeaders().size() > 0)
+        {
+            String insertHeaderSql = "INSERT INTO header(check_id, \"name\", \"value\") VALUES(:check_id, :name, :value)";
 
-        SqlParameterSource[] insertHeaderParameters = check
-                .getHeaders()
-                .stream()
-                .map(header -> new MapSqlParameterSource()
-                        .addValue("check_id", check.getId())
-                        .addValue("name", header.getName())
-                        .addValue("value", header.getValue()))
-                .toArray(SqlParameterSource[]::new);
+            SqlParameterSource[] insertHeaderParameters = check
+                    .getHeaders()
+                    .stream()
+                    .map(header -> new MapSqlParameterSource()
+                            .addValue("check_id", check.getId())
+                            .addValue("name", header.getName())
+                            .addValue("value", header.getValue()))
+                    .toArray(SqlParameterSource[]::new);
 
-        this.namedParameterJdbcTemplate
-                .batchUpdate(
-                        insertHeaderSql,
-                        insertHeaderParameters
-                );
-
+            this.namedParameterJdbcTemplate
+                    .batchUpdate(
+                            insertHeaderSql,
+                            insertHeaderParameters
+                    );
+        }
         return check;
     }
 
