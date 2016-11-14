@@ -11,26 +11,43 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.sql.Timestamp;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Configuration
 public class ProbeRepository implements IProbeRepository
 {
     private final NamedParameterJdbcTemplate namedParameterJdbcTemplate;
+    private final Pattern headerRegex;
 
     @Autowired
     public ProbeRepository(NamedParameterJdbcTemplate namedParameterJdbcTemplate)
     {
         this.namedParameterJdbcTemplate = namedParameterJdbcTemplate;
+        this.headerRegex = Pattern.compile("\"(?<name>.+?)\": \"(?<value>.*?)\"");
     }
 
     public List<Check> getCandidates(Probe probe)
     {
         String sql = ""
+                + "WITH headers AS "
+                + "( "
+                + "                SELECT DISTINCT \"check\".\"id\", "
+                + "                                NULLIF(string_agg(concat(concat('\"', \"header\".\"name\", '\": '), concat('\"', \"value\", '\"')), ', '), '\"\": \"\"') AS headers "
+                + "                FROM            \"check\" "
+                + "                LEFT JOIN       \"header\" "
+                + "                ON              \"check\".id = \"header\".check_id "
+                + "                GROUP BY        \"check\".\"id\""
+                + ") "
                 + "UPDATE \"check\" "
                 + "SET state = 'ELECTED'::state, locked = (NOW() + '1 minute') "
-                + "WHERE id IN ( "
+                + "FROM headers "
+                + "WHERE \"check\".id = headers.id "
+                + "AND \"check\".id IN ( "
                 + "    SELECT id "
                 + "    FROM ( "
                 + "    	SELECT id "
@@ -40,7 +57,7 @@ public class ProbeRepository implements IProbeRepository
                 + "        ORDER BY status = 'UNKNOWN' DESC, refresh ASC LIMIT :candidateLimit "
                 + "	) AS electable "
                 + ") "
-                + "RETURNING id, \"name\", url, status, latest_result_id, confirming";
+                + "RETURNING \"check\".id, \"check\".\"name\", url, status, latest_result_id, confirming, \"headers\".\"headers\"";
 
         SqlParameterSource parameters = new MapSqlParameterSource()
                 .addValue("probeName", probe.getName())
@@ -160,6 +177,30 @@ public class ProbeRepository implements IProbeRepository
                 .setUrl(rs.getString("url"))
                 .setStatus(Status.valueOf(rs.getString("status")))
                 .setLatestResultId(rs.getLong("latest_result_id") != 0 ? rs.getLong("latest_result_id") : null)
-                .setConfirming(rs.getBoolean("confirming"));
+                .setConfirming(rs.getBoolean("confirming"))
+                .setHeaders(getHeaders(rs.getString("headers")));
+    }
+
+    private List<Header> getHeaders(String headersString)
+    {
+        if (headersString != null && !headersString.isEmpty())
+        {
+            List<Header> headers = new ArrayList<>();
+
+            Matcher headerMatcher = Pattern
+                    .compile("\"(?<name>.+?)\": \"(?<value>.*?)\"")
+                    .matcher(headersString);
+
+            while (headerMatcher.find())
+            {
+                headers.add(new Header()
+                        .setName(headerMatcher.group("name"))
+                        .setValue(headerMatcher.group("value")));
+            }
+
+            return headers;
+        }
+
+        return Collections.emptyList();
     }
 }

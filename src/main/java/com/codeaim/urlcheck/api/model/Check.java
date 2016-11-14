@@ -8,6 +8,7 @@ import lombok.Setter;
 import lombok.experimental.Accessors;
 
 import javax.validation.constraints.NotNull;
+import java.util.List;
 
 @Getter
 @Setter
@@ -28,4 +29,5 @@ public class Check
     private boolean confirming;
     @NotNull
     private Integer interval;
+    private List<Header> headers;
 }
