@@ -32,4 +32,5 @@ public class Check
     private Integer interval;
     private Set<Header> headers;
     private Instant disabled;
+    private boolean internal;
 }

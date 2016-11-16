@@ -29,7 +29,7 @@ public class CheckRepository implements ICheckRepository
     @Override
     public List<Check> getChecks()
     {
-        String sql = "SELECT id, name, url, status, interval, disabled FROM \"check\" ORDER BY created DESC;";
+        String sql = "SELECT id, name, url, status, interval, disabled, internal FROM \"check\" ORDER BY created DESC;";
 
         return this.namedParameterJdbcTemplate.query(sql, mapCheck());
     }
@@ -37,7 +37,7 @@ public class CheckRepository implements ICheckRepository
     @Override
     public List<Check> getChecks(String username)
     {
-        String sql = "SELECT \"check\".id, name, url, status, interval, disabled FROM \"check\" INNER JOIN \"user\" ON \"check\".user_id = \"user\".id WHERE \"user\".username = :username ORDER BY \"check\".created DESC;";
+        String sql = "SELECT \"check\".id, name, url, status, interval, disabled, internal FROM \"check\" INNER JOIN \"user\" ON \"check\".user_id = \"user\".id WHERE \"user\".username = :username ORDER BY \"check\".created DESC;";
 
         MapSqlParameterSource parameters = new MapSqlParameterSource()
                 .addValue("username", username);
@@ -72,13 +72,15 @@ public class CheckRepository implements ICheckRepository
                 + "             :interval, "
                 + "             FALSE, "
                 + "             1,"
-                + "             NULL);";
+                + "             NULL,"
+                + "             :internal);";
 
         SqlParameterSource insertCheckParameters = new MapSqlParameterSource()
                 .addValue("user_id", check.getUserId())
                 .addValue("name", check.getName())
                 .addValue("url", check.getUrl())
-                .addValue("interval", check.getInterval());
+                .addValue("interval", check.getInterval())
+                .addValue("internal", check.isInternal());
 
         this.namedParameterJdbcTemplate.update(
                 insertCheckSql,
@@ -131,14 +133,15 @@ public class CheckRepository implements ICheckRepository
     @Override
     public Check updateCheck(Check check)
     {
-        String sql = "UPDATE \"check\" SET \"name\" = :name, url = :url, \"interval\" = :interval, disabled = :disabled, version = (version + 1), modified = NOW() WHERE id = :id;";
+        String sql = "UPDATE \"check\" SET \"name\" = :name, url = :url, \"interval\" = :interval, disabled = :disabled, internal = :internal, version = (version + 1), modified = NOW() WHERE id = :id;";
 
         SqlParameterSource parameters = new MapSqlParameterSource()
                 .addValue("id", check.getId())
                 .addValue("name", check.getName())
                 .addValue("url", check.getUrl())
                 .addValue("interval", check.getInterval())
-                .addValue("disabled", check.getDisabled() != null ? Timestamp.from(check.getDisabled()) : null);
+                .addValue("disabled", check.getDisabled() != null ? Timestamp.from(check.getDisabled()) : null)
+                .addValue("internal", check.isInternal());
 
         this.namedParameterJdbcTemplate.update(
                 sql,
@@ -170,6 +173,7 @@ public class CheckRepository implements ICheckRepository
                 .setUrl(rs.getString("url"))
                 .setStatus(Status.valueOf(rs.getString("status")))
                 .setInterval(rs.getInt("interval"))
-                .setDisabled(rs.getTimestamp("disabled") != null ? rs.getTimestamp("disabled").toInstant() : null);
+                .setDisabled(rs.getTimestamp("disabled") != null ? rs.getTimestamp("disabled").toInstant() : null)
+                .setInternal(rs.getBoolean("internal"));
     }
 }
