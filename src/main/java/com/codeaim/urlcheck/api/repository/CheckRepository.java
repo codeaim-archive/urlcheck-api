@@ -12,6 +12,7 @@ import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.sql.Timestamp;
 import java.util.List;
 
 @Configuration
@@ -28,7 +29,7 @@ public class CheckRepository implements ICheckRepository
     @Override
     public List<Check> getChecks()
     {
-        String sql = "SELECT id, name, url, status FROM \"check\" ORDER BY created DESC;";
+        String sql = "SELECT id, name, url, status, interval, disabled FROM \"check\" ORDER BY created DESC;";
 
         return this.namedParameterJdbcTemplate.query(sql, mapCheck());
     }
@@ -36,7 +37,7 @@ public class CheckRepository implements ICheckRepository
     @Override
     public List<Check> getChecks(String username)
     {
-        String sql = "SELECT \"check\".id, name, url, status FROM \"check\" INNER JOIN \"user\" ON \"check\".user_id = \"user\".id WHERE \"user\".username = :username ORDER BY \"check\".created DESC;";
+        String sql = "SELECT \"check\".id, name, url, status, interval, disabled FROM \"check\" INNER JOIN \"user\" ON \"check\".user_id = \"user\".id WHERE \"user\".username = :username ORDER BY \"check\".created DESC;";
 
         MapSqlParameterSource parameters = new MapSqlParameterSource()
                 .addValue("username", username);
@@ -70,7 +71,8 @@ public class CheckRepository implements ICheckRepository
                 + "             NULL, "
                 + "             :interval, "
                 + "             FALSE, "
-                + "             1);";
+                + "             1,"
+                + "             NULL);";
 
         SqlParameterSource insertCheckParameters = new MapSqlParameterSource()
                 .addValue("user_id", check.getUserId())
@@ -108,6 +110,7 @@ public class CheckRepository implements ICheckRepository
                             insertHeaderParameters
                     );
         }
+
         return check;
     }
 
@@ -125,12 +128,48 @@ public class CheckRepository implements ICheckRepository
         );
     }
 
+    @Override
+    public Check updateCheck(Check check)
+    {
+        String sql = "UPDATE \"check\" SET \"name\" = :name, url = :url, \"interval\" = :interval, disabled = :disabled, version = (version + 1), modified = NOW() WHERE id = :id;";
+
+        SqlParameterSource parameters = new MapSqlParameterSource()
+                .addValue("id", check.getId())
+                .addValue("name", check.getName())
+                .addValue("url", check.getUrl())
+                .addValue("interval", check.getInterval())
+                .addValue("disabled", check.getDisabled() != null ? Timestamp.from(check.getDisabled()) : null);
+
+        this.namedParameterJdbcTemplate.update(
+                sql,
+                parameters
+        );
+
+        return check;
+    }
+
+    @Override
+    public boolean checkExists(long id)
+    {
+        String sql = "SELECT count(*) FROM \"check\" WHERE id = :id;";
+
+        SqlParameterSource parameters = new MapSqlParameterSource()
+                .addValue("id", id);
+
+        Integer count = this.namedParameterJdbcTemplate
+                .queryForObject(sql, parameters, Integer.class);
+
+        return count != null && count > 0;
+    }
+
     private RowMapper<Check> mapCheck()
     {
         return (rs, rowNum) -> new Check()
                 .setId(rs.getLong("id"))
                 .setName(rs.getString("name"))
                 .setUrl(rs.getString("url"))
-                .setStatus(Status.valueOf(rs.getString("status")));
+                .setStatus(Status.valueOf(rs.getString("status")))
+                .setInterval(rs.getInt("interval"))
+                .setDisabled(rs.getTimestamp("disabled") != null ? rs.getTimestamp("disabled").toInstant() : null);
     }
 }

@@ -13,4 +13,8 @@ public interface ICheckRepository
     Check createCheck(Check check);
 
     void deleteCheck(long id);
+
+    Check updateCheck(Check check);
+
+    boolean checkExists(long id);
 }

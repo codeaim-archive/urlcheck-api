@@ -99,6 +99,39 @@ public class CheckController
             .build();
     }
 
+    @RequestMapping(value = "/{username:.*}/{id}", method = RequestMethod.POST)
+    public ResponseEntity<?> updateCheck(
+            @PathVariable(value = "username")
+            String username,
+            @RequestBody
+            @Valid
+                    Check check,
+            BindingResult bindingResult
+    )
+    {
+        if (bindingResult.hasErrors())
+            return ResponseEntity
+                    .unprocessableEntity()
+                    .build();
+
+        Optional<User> user = userRepository
+                .getUserByUsername(username);
+
+        if(user.isPresent() && checkRepository.checkExists(check.getId()))
+        {
+            Check updatedCheck = checkRepository
+                    .updateCheck(check);
+
+            return ResponseEntity
+                    .ok()
+                    .body(updatedCheck);
+        }
+
+        return ResponseEntity
+                .notFound()
+                .build();
+    }
+
     @RequestMapping(value = "/{username:.+}/{id}", method = RequestMethod.DELETE)
     public ResponseEntity<?> deleteCheckById(
             @PathVariable(value = "username")

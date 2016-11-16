@@ -8,6 +8,7 @@ import lombok.Setter;
 import lombok.experimental.Accessors;
 
 import javax.validation.constraints.NotNull;
+import java.time.Instant;
 import java.util.Set;
 
 @Getter
@@ -30,4 +31,5 @@ public class Check
     @NotNull
     private Integer interval;
     private Set<Header> headers;
+    private Instant disabled;
 }

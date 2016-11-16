@@ -50,7 +50,7 @@ public class ProbeRepository implements IProbeRepository
                 + "    FROM ( "
                 + "    	SELECT id "
                 + "    	FROM \"check\" "
-                + "    	WHERE ((state = 'WAITING'::state AND refresh <= NOW()) OR (state = 'ELECTED'::state AND locked <= NOW())) "
+                + "    	WHERE disabled IS NULL AND ((state = 'WAITING'::state AND refresh <= NOW()) OR (state = 'ELECTED'::state AND locked <= NOW())) "
                 + "        AND ((:isClustered = FALSE) OR (confirming = FALSE) OR (:isClustered = TRUE AND probe <> :probeName)) "
                 + "        ORDER BY status = 'UNKNOWN' DESC, refresh ASC LIMIT :candidateLimit "
                 + "	) AS electable "
