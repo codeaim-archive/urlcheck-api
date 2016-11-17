@@ -10,6 +10,7 @@ import org.springframework.jdbc.core.namedparam.SqlParameterSource;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.sql.Timestamp;
+import java.sql.Types;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -60,13 +61,13 @@ public class ProbeRepository implements IProbeRepository
                 + "        ORDER BY status = 'UNKNOWN' DESC, refresh ASC LIMIT :candidateLimit "
                 + "	) AS electable "
                 + ") "
-                + "RETURNING \"check\".id, \"check\".\"name\", url, status, latest_result_id, confirming, \"headers\".\"headers\"";
+                + "RETURNING \"check\".id, \"check\".\"name\", url, status, latest_result_id, confirming, \"internal\", \"headers\".\"headers\"";
 
         SqlParameterSource parameters = new MapSqlParameterSource()
                 .addValue("probeName", probe.getName())
                 .addValue("isClustered", probe.isClustered())
                 .addValue("candidateLimit", probe.getCandidateLimit())
-                .addValue("username", probe.getUsername());
+                .addValue("username", probe.getUsername(), Types.VARCHAR);
 
         return this.namedParameterJdbcTemplate
                 .query(sql, parameters, mapCandidate());
