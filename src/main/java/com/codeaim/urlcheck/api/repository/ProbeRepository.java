@@ -35,22 +35,27 @@ public class ProbeRepository implements IProbeRepository
                 + "WITH headers AS "
                 + "( "
                 + "                SELECT DISTINCT \"check\".\"id\", "
+                + "                                \"user\".username, "
                 + "                                NULLIF(string_agg(concat(concat('\"', \"header\".\"name\", '\": '), concat('\"', \"value\", '\"')), ', '), '\"\": \"\"') AS headers "
                 + "                FROM            \"check\" "
+                + "                INNER JOIN      \"user\" "
+                + "                ON              \"user\".id = \"check\".user_id "
                 + "                LEFT JOIN       \"header\" "
                 + "                ON              \"check\".id = \"header\".check_id "
-                + "                GROUP BY        \"check\".\"id\""
+                + "                GROUP BY        \"check\".\"id\", \"user\".username"
                 + ") "
                 + "UPDATE \"check\" "
                 + "SET state = 'ELECTED'::state, locked = (NOW() + '1 minute') "
                 + "FROM headers "
                 + "WHERE \"check\".id = headers.id "
                 + "AND \"check\".id IN ( "
-                + "    SELECT id "
+                + "    SELECT \"check\".id "
                 + "    FROM ( "
-                + "    	SELECT id "
+                + "    	SELECT \"check\".id "
                 + "    	FROM \"check\" "
-                + "    	WHERE disabled IS NULL AND ((state = 'WAITING'::state AND refresh <= NOW()) OR (state = 'ELECTED'::state AND locked <= NOW())) "
+                + "     INNER JOIN \"headers\" "
+                + "     ON \"check\".id = \"headers\".id "
+                + "    	WHERE disabled IS NULL AND ((:username IS NULL AND \"check\".\"internal\" = FALSE) OR (:username = \"headers\".username AND \"check\".\"internal\" = TRUE)) AND ((state = 'WAITING'::state AND refresh <= NOW()) OR (state = 'ELECTED'::state AND locked <= NOW())) "
                 + "        AND ((:isClustered = FALSE) OR (confirming = FALSE) OR (:isClustered = TRUE AND probe <> :probeName)) "
                 + "        ORDER BY status = 'UNKNOWN' DESC, refresh ASC LIMIT :candidateLimit "
                 + "	) AS electable "
@@ -60,7 +65,8 @@ public class ProbeRepository implements IProbeRepository
         SqlParameterSource parameters = new MapSqlParameterSource()
                 .addValue("probeName", probe.getName())
                 .addValue("isClustered", probe.isClustered())
-                .addValue("candidateLimit", probe.getCandidateLimit());
+                .addValue("candidateLimit", probe.getCandidateLimit())
+                .addValue("username", probe.getUsername());
 
         return this.namedParameterJdbcTemplate
                 .query(sql, parameters, mapCandidate());
@@ -172,6 +178,7 @@ public class ProbeRepository implements IProbeRepository
                 .setStatus(Status.valueOf(rs.getString("status")))
                 .setLatestResultId(rs.getLong("latest_result_id") != 0 ? rs.getLong("latest_result_id") : null)
                 .setConfirming(rs.getBoolean("confirming"))
+                .setInternal(rs.getBoolean("internal"))
                 .setHeaders(getHeaders(rs.getString("headers")));
     }
 
