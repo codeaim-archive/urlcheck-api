@@ -1,15 +1,18 @@
 package com.codeaim.urlcheck.api.controller;
 
-import com.codeaim.urlcheck.api.model.Check;
 import com.codeaim.urlcheck.api.model.User;
-import com.codeaim.urlcheck.api.repository.ICheckRepository;
 import com.codeaim.urlcheck.api.repository.IUserRepository;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
+import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
+import javax.validation.Valid;
 import java.util.Optional;
+
+import static org.springframework.hateoas.mvc.ControllerLinkBuilder.linkTo;
+import static org.springframework.hateoas.mvc.ControllerLinkBuilder.methodOn;
 
 @Controller
 @RequestMapping("/user")
@@ -39,5 +42,38 @@ public class UserController
         return user.isPresent() ?
                 ResponseEntity.ok().body(user.get()) :
                 ResponseEntity.notFound().build();
+    }
+
+    @RequestMapping(method = RequestMethod.POST)
+    public ResponseEntity<?> createUser(
+            @RequestBody
+            @Valid
+                    User user,
+            BindingResult bindingResult
+    )
+    {
+        if(bindingResult.hasErrors())
+            return ResponseEntity
+                    .unprocessableEntity()
+                    .build();
+
+        Optional<User> userByUsername = userRepository
+                .getUserByUsername(user.getUsername());
+        Optional<User> userByEmail = userRepository
+                .getUserByUsername(user.getEmail());
+
+        if(userByUsername.isPresent() || userByEmail.isPresent())
+            return ResponseEntity
+                    .status(HttpStatus.CONFLICT)
+                    .build();
+
+        User createdUser = userRepository
+                .createUser(user);
+
+        return ResponseEntity
+                .created(linkTo(methodOn(UserController.class)
+                        .getUserByUsername(user.getUsername()))
+                        .toUri())
+                .body(createdUser);
     }
 }
