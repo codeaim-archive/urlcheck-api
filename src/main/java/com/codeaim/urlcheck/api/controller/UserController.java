@@ -44,6 +44,17 @@ public class UserController
                 ResponseEntity.notFound().build();
     }
 
+
+//    @RequestMapping(value = "/{username:.+}/verify", method = RequestMethod.POST)
+//    public ResponseEntity<?> verifyUser(
+//            @PathVariable(value = "username")
+//                    String username,
+//            @RequestParam(name="")
+//    )
+//    {
+//
+//    }
+
     @RequestMapping(method = RequestMethod.POST)
     public ResponseEntity<?> createUser(
             @RequestBody
@@ -52,7 +63,7 @@ public class UserController
             BindingResult bindingResult
     )
     {
-        if(bindingResult.hasErrors())
+        if (bindingResult.hasErrors())
             return ResponseEntity
                     .unprocessableEntity()
                     .build();
@@ -62,7 +73,7 @@ public class UserController
         Optional<User> userByEmail = userRepository
                 .getUserByUsername(user.getEmail());
 
-        if(userByUsername.isPresent() || userByEmail.isPresent())
+        if (userByUsername.isPresent() || userByEmail.isPresent())
             return ResponseEntity
                     .status(HttpStatus.CONFLICT)
                     .build();

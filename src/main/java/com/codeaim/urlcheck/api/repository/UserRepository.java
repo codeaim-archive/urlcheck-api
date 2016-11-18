@@ -64,6 +64,7 @@ public class UserRepository implements IUserRepository
                 + "                      email, "
                 + "                      reset_token, "
                 + "                      access_token, "
+                + "                      email_verification token, "
                 + "                      password, "
                 + "                      email_verified, "
                 + "                      created, "
@@ -74,6 +75,7 @@ public class UserRepository implements IUserRepository
                 + "             :email, "
                 + "             :reset_token, "
                 + "             :access_token, "
+                + "             :email_verification token, "
                 + "             :password, "
                 + "             FALSE, "
                 + "             Now(), "
@@ -85,6 +87,7 @@ public class UserRepository implements IUserRepository
                 .addValue("email", user.getEmail())
                 .addValue("reset_token", UUID.randomUUID())
                 .addValue("access_token", UUID.randomUUID())
+                .addValue("email_verification token", UUID.randomUUID())
                 .addValue("password", passwordEncoder.encode(user.getPassword()));
 
         this.namedParameterJdbcTemplate
