@@ -1,6 +1,7 @@
 package com.codeaim.urlcheck.api.controller;
 
 import com.codeaim.urlcheck.api.model.User;
+import com.codeaim.urlcheck.api.model.Verify;
 import com.codeaim.urlcheck.api.repository.IUserRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -55,7 +56,7 @@ public class UserController
                     String username,
             @RequestBody
             @Valid
-                    String emailVerificationToken,
+                    Verify verify,
             BindingResult bindingResult
     )
     {
@@ -67,7 +68,7 @@ public class UserController
         return userRepository
                 .verifyEmail(
                         username,
-                        emailVerificationToken) ?
+                        verify.getEmailVerificationToken()) ?
                 ResponseEntity
                         .ok()
                         .build() :

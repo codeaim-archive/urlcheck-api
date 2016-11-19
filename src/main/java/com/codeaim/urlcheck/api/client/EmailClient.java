@@ -1,38 +1,33 @@
 package com.codeaim.urlcheck.api.client;
 
 import com.codeaim.urlcheck.api.configuration.ApiConfiguration;
+import org.apache.commons.io.IOUtils;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.core.io.Resource;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
+import org.springframework.util.ResourceUtils;
 import org.springframework.web.client.RestTemplate;
 
 import java.io.IOException;
-import java.nio.file.Files;
 
 @Configuration
 public class EmailClient
 {
     private final ApiConfiguration apiConfiguration;
     private final RestTemplate restTemplate;
-    private final Resource verifyEmail;
 
     @Autowired
     public EmailClient(
             ApiConfiguration apiConfiguration,
-            RestTemplate restTemplate,
-            @Value("classpath:/templates/verifyEmail.html")
-                    Resource verifyEmail
+            RestTemplate restTemplate
     )
     {
         this.apiConfiguration = apiConfiguration;
         this.restTemplate = restTemplate;
-        this.verifyEmail = verifyEmail;
     }
 
     public void sendVerifyEmail(
@@ -54,14 +49,15 @@ public class EmailClient
         restTemplate.postForObject(
                 apiConfiguration.getEmailEndpoint(),
                 new HttpEntity<>(parameters, headers),
-                String.class);
+                String.class
+        );
     }
 
     private String getVerifyEmailHtml(String username, String emailVerificationToken)
     {
         try
         {
-            return new String(Files.readAllBytes(verifyEmail.getFile().toPath()))
+            return IOUtils.toString(ResourceUtils.getURL("classpath:templates/verifyEmail.html").openStream(), "UTF-8")
                     .replace("{email_verification_url}", apiConfiguration.getEmailVerificationUrl()
                             .replace("{username}", username)
                             .replace("{email_verification_token}", emailVerificationToken));
