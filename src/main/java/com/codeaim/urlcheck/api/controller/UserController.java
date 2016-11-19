@@ -1,6 +1,9 @@
 package com.codeaim.urlcheck.api.controller;
 
+import com.codeaim.urlcheck.api.client.EmailClient;
+import com.codeaim.urlcheck.api.model.EmailVerification;
 import com.codeaim.urlcheck.api.model.User;
+import com.codeaim.urlcheck.api.model.Verification;
 import com.codeaim.urlcheck.api.model.Verify;
 import com.codeaim.urlcheck.api.repository.IUserRepository;
 import org.springframework.http.HttpStatus;
@@ -21,13 +24,16 @@ import static org.springframework.hateoas.mvc.ControllerLinkBuilder.methodOn;
 public class UserController
 {
     private final IUserRepository userRepository;
+    private final EmailClient emailClient;
 
     public UserController
             (
-                    IUserRepository userRepository
+                    IUserRepository userRepository,
+                    EmailClient emailClient
             )
     {
         this.userRepository = userRepository;
+        this.emailClient = emailClient;
     }
 
     @RequestMapping(value = "/{username:.+}", method = RequestMethod.GET)
@@ -49,6 +55,33 @@ public class UserController
                         .build();
     }
 
+    @RequestMapping(value = "/{username:.+}/verification", method = RequestMethod.POST)
+    public ResponseEntity<?> verificationEmail(
+            @PathVariable(value = "username")
+                    String username,
+            @RequestBody
+                    Verification verification
+    )
+    {
+        Optional<EmailVerification> emailVerification = userRepository
+                .getEmailVerificationByUsername(username);
+
+        if(emailVerification.isPresent())
+            return emailClient.sendVerifyEmail(
+                    emailVerification.get().getEmail(),
+                    emailVerification.get().getUsername(),
+                    emailVerification.get().getEmailVerificationToken()) ?
+                    ResponseEntity
+                            .ok()
+                            .build() :
+                    ResponseEntity
+                            .noContent()
+                            .build();
+
+        return ResponseEntity
+                .noContent()
+                .build();
+    }
 
     @RequestMapping(value = "/{username:.+}/verify", method = RequestMethod.POST)
     public ResponseEntity<?> verifyUserEmail(

@@ -1,6 +1,7 @@
 package com.codeaim.urlcheck.api.repository;
 
 import com.codeaim.urlcheck.api.client.EmailClient;
+import com.codeaim.urlcheck.api.model.EmailVerification;
 import com.codeaim.urlcheck.api.model.Role;
 import com.codeaim.urlcheck.api.model.User;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -41,17 +42,16 @@ public class UserRepository implements IUserRepository
     @Override
     public Optional<User> getUserByUsername(String username)
     {
-        String getUserByUsernameSql = "SELECT \"user\".id, \"user\".username, \"user\".email, \"user\".\"password\", string_agg(\"role\".\"name\", ',') AS \"roles\" FROM \"user\" INNER JOIN \"user_role\" ON \"user\".id = \"user_role\".user_id INNER JOIN \"role\" ON \"role\".id = \"user_role\".role_id WHERE \"user\".username = :username OR \"user\".email = :username GROUP BY \"user\".id";
+        String sql = "SELECT \"user\".id, \"user\".username, \"user\".email, \"user\".email_verified, \"user\".\"password\", string_agg(\"role\".\"name\", ',') AS \"roles\" FROM \"user\" INNER JOIN \"user_role\" ON \"user\".id = \"user_role\".user_id INNER JOIN \"role\" ON \"role\".id = \"user_role\".role_id WHERE \"user\".username = :username OR \"user\".email = :username GROUP BY \"user\".id";
 
         MapSqlParameterSource parameters = new MapSqlParameterSource()
                 .addValue("username", username);
 
         return this.namedParameterJdbcTemplate
                 .query(
-                        getUserByUsernameSql,
+                        sql,
                         parameters,
-                        mapUser()
-                )
+                        mapUser())
                 .stream()
                 .findFirst();
     }
@@ -149,6 +149,30 @@ public class UserRepository implements IUserRepository
                 ) > 0;
     }
 
+    @Override
+    public Optional<EmailVerification> getEmailVerificationByUsername(String username)
+    {
+        String sql = "SELECT \"user\".email, \"user\".username, \"user\".email_verification_token FROM \"user\" WHERE (\"user\".username = :username OR \"user\".email = :username) AND \"user\".email_verified = FALSE";
+
+        MapSqlParameterSource parameters = new MapSqlParameterSource()
+                .addValue("username", username);
+
+        return this.namedParameterJdbcTemplate
+                .query(
+                        sql,
+                        parameters,
+                        mapEmailVerification())
+                .stream()
+                .findFirst();
+    }
+
+    private RowMapper<EmailVerification> mapEmailVerification()
+    {
+        return (rs, rowNum) -> new EmailVerification()
+                .setEmail(rs.getString("email"))
+                .setUsername(rs.getString("username"))
+                .setEmailVerificationToken(rs.getString("email_verification_token"));
+    }
 
     private RowMapper<User> mapUser()
     {
@@ -156,6 +180,7 @@ public class UserRepository implements IUserRepository
                 .setId(rs.getLong("id"))
                 .setUsername(rs.getString("username"))
                 .setPassword(rs.getString("password"))
+                .setEmailVerified(rs.getBoolean("email_verified"))
                 .setRoles(Arrays.stream(rs.getString("roles")
                         .split(","))
                         .map(x -> new Role().setName(x))

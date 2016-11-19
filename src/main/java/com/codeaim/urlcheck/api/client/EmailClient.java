@@ -7,6 +7,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.util.ResourceUtils;
@@ -30,7 +31,7 @@ public class EmailClient
         this.restTemplate = restTemplate;
     }
 
-    public void sendVerifyEmail(
+    public boolean sendVerifyEmail(
             String email,
             String username,
             String emailVerificationToken
@@ -46,11 +47,12 @@ public class EmailClient
         headers.add(HttpHeaders.AUTHORIZATION, apiConfiguration.getEmailAuthorizationHeader());
         headers.add(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_FORM_URLENCODED.toString());
 
-        restTemplate.postForObject(
+        ResponseEntity<String> response = restTemplate.postForEntity(
                 apiConfiguration.getEmailEndpoint(),
                 new HttpEntity<>(parameters, headers),
-                String.class
-        );
+                String.class);
+
+        return response.getStatusCode().is2xxSuccessful();
     }
 
     private String getVerifyEmailHtml(String username, String emailVerificationToken)
