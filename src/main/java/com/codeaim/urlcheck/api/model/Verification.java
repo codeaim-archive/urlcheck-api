@@ -9,4 +9,5 @@ import lombok.experimental.Accessors;
 @Accessors(chain = true)
 public class Verification
 {
+    private String username;
 }
