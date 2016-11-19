@@ -40,20 +40,41 @@ public class UserController
                 .getUserByUsername(username);
 
         return user.isPresent() ?
-                ResponseEntity.ok().body(user.get()) :
-                ResponseEntity.notFound().build();
+                ResponseEntity
+                        .ok()
+                        .body(user.get()) :
+                ResponseEntity
+                        .notFound()
+                        .build();
     }
 
 
-//    @RequestMapping(value = "/{username:.+}/verify", method = RequestMethod.POST)
-//    public ResponseEntity<?> verifyUser(
-//            @PathVariable(value = "username")
-//                    String username,
-//            @RequestParam(name="")
-//    )
-//    {
-//
-//    }
+    @RequestMapping(value = "/{username:.+}/verify", method = RequestMethod.POST)
+    public ResponseEntity<?> verifyUserEmail(
+            @PathVariable(value = "username")
+                    String username,
+            @RequestBody
+            @Valid
+                    String emailVerificationToken,
+            BindingResult bindingResult
+    )
+    {
+        if (bindingResult.hasErrors())
+            return ResponseEntity
+                    .unprocessableEntity()
+                    .build();
+
+        return userRepository
+                .verifyEmail(
+                        username,
+                        emailVerificationToken) ?
+                ResponseEntity
+                        .ok()
+                        .build() :
+                ResponseEntity
+                        .noContent()
+                        .build();
+    }
 
     @RequestMapping(method = RequestMethod.POST)
     public ResponseEntity<?> createUser(

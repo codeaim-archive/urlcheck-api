@@ -9,4 +9,6 @@ public interface IUserRepository
     Optional<User> getUserByUsername(String username);
 
     User createUser(User user);
+
+    boolean verifyEmail(String username, String emailVerificationToken);
 }

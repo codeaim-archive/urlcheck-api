@@ -1,5 +1,6 @@
 package com.codeaim.urlcheck.api.repository;
 
+import com.codeaim.urlcheck.api.client.EmailClient;
 import com.codeaim.urlcheck.api.model.Role;
 import com.codeaim.urlcheck.api.model.User;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,15 +24,18 @@ public class UserRepository implements IUserRepository
 {
     private final NamedParameterJdbcTemplate namedParameterJdbcTemplate;
     private final PasswordEncoder passwordEncoder;
+    private final EmailClient emailClient;
 
     @Autowired
     public UserRepository(
             NamedParameterJdbcTemplate namedParameterJdbcTemplate,
-            PasswordEncoder passwordEncoder
+            PasswordEncoder passwordEncoder,
+            EmailClient emailClient
     )
     {
         this.namedParameterJdbcTemplate = namedParameterJdbcTemplate;
         this.passwordEncoder = passwordEncoder;
+        this.emailClient = emailClient;
     }
 
     @Override
@@ -64,7 +68,7 @@ public class UserRepository implements IUserRepository
                 + "                      email, "
                 + "                      reset_token, "
                 + "                      access_token, "
-                + "                      email_verification token, "
+                + "                      email_verification_token, "
                 + "                      password, "
                 + "                      email_verified, "
                 + "                      created, "
@@ -75,19 +79,23 @@ public class UserRepository implements IUserRepository
                 + "             :email, "
                 + "             :reset_token, "
                 + "             :access_token, "
-                + "             :email_verification token, "
+                + "             :email_verification_token, "
                 + "             :password, "
                 + "             FALSE, "
                 + "             Now(), "
                 + "             Now(), "
                 + "             1);";
 
+        String emailVerificationToken = UUID
+                .randomUUID()
+                .toString();
+
         MapSqlParameterSource insertUserParameters = new MapSqlParameterSource()
                 .addValue("username", user.getUsername())
                 .addValue("email", user.getEmail())
                 .addValue("reset_token", UUID.randomUUID())
                 .addValue("access_token", UUID.randomUUID())
-                .addValue("email_verification token", UUID.randomUUID())
+                .addValue("email_verification_token", emailVerificationToken)
                 .addValue("password", passwordEncoder.encode(user.getPassword()));
 
         this.namedParameterJdbcTemplate
@@ -114,8 +122,33 @@ public class UserRepository implements IUserRepository
 
         user.setRoles(Collections.singletonList(new Role().setName("registered")));
 
+        emailClient.sendVerifyEmail(
+                user.getEmail(),
+                user.getUsername(),
+                emailVerificationToken);
+
         return user;
     }
+
+    @Override
+    public boolean verifyEmail(
+            String username,
+            String emailVerificationToken
+    )
+    {
+        String sql = "UPDATE \"user\" SET email_verified = TRUE WHERE username = :username AND email_verification_token = :email_verification_token;";
+
+        MapSqlParameterSource parameters = new MapSqlParameterSource()
+                .addValue("username", username)
+                .addValue("email_verification_token", emailVerificationToken);
+
+        return this.namedParameterJdbcTemplate
+                .update(
+                        sql,
+                        parameters
+                ) > 0;
+    }
+
 
     private RowMapper<User> mapUser()
     {

@@ -3,60 +3,71 @@ package com.codeaim.urlcheck.api.client;
 import com.codeaim.urlcheck.api.configuration.ApiConfiguration;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.Resource;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
 
 import java.io.IOException;
 import java.nio.file.Files;
-import java.util.AbstractMap.SimpleEntry;
-import java.util.Collections;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
+@Configuration
 public class EmailClient
 {
-
-    private final Resource validateAccountTemplate;
-
     private final ApiConfiguration apiConfiguration;
     private final RestTemplate restTemplate;
-
+    private final Resource verifyEmail;
 
     @Autowired
     public EmailClient(
             ApiConfiguration apiConfiguration,
             RestTemplate restTemplate,
-            @Value("file:")
-            Resource validateAccountTemplate
+            @Value("classpath:/templates/verifyEmail.html")
+                    Resource verifyEmail
     )
     {
-        this.validateAccountTemplate = validateAccountTemplate;
         this.apiConfiguration = apiConfiguration;
         this.restTemplate = restTemplate;
+        this.verifyEmail = verifyEmail;
     }
 
-    public void validateAccountEmail(String email, String emailVerificationToken)
+    public void sendVerifyEmail(
+            String email,
+            String username,
+            String emailVerificationToken
+    )
     {
+        MultiValueMap<String, String> parameters = new LinkedMultiValueMap<>();
+        parameters.add("from", "urlcheck.io <admin@urlcheck.io>");
+        parameters.add("to", email);
+        parameters.add("subject", "Please verify your urlcheck.io account");
+        parameters.add("html", getVerifyEmailHtml(username, emailVerificationToken));
+
+        MultiValueMap<String, String> headers = new LinkedMultiValueMap<>();
+        headers.add(HttpHeaders.AUTHORIZATION, apiConfiguration.getEmailAuthorizationHeader());
+        headers.add(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_FORM_URLENCODED.toString());
+
         restTemplate.postForObject(
                 apiConfiguration.getEmailEndpoint(),
-                Collections.unmodifiableMap(Stream.of(
-                        new SimpleEntry<>("from", "urlcheck.io <admin@urlcheck.io>"),
-                        new SimpleEntry<>("to", email),
-                        new SimpleEntry<>("subject", "Please verify your urlcheck.io account"),
-                        new SimpleEntry<>("html", getValidateAccountHtml(emailVerificationToken)))
-                        .collect(Collectors.toMap(SimpleEntry::getKey, SimpleEntry::getValue)))
-                , String.class);
+                new HttpEntity<>(parameters, headers),
+                String.class);
     }
 
-    private String getValidateAccountHtml(String emailVerificationToken)
+    private String getVerifyEmailHtml(String username, String emailVerificationToken)
     {
         try
         {
-            return new String(Files.readAllBytes(validateAccountTemplate.getFile().toPath()))
-                    .replace("{email_verification_token}", emailVerificationToken);
+            return new String(Files.readAllBytes(verifyEmail.getFile().toPath()))
+                    .replace("{email_verification_url}", apiConfiguration.getEmailVerificationUrl()
+                            .replace("{username}", username)
+                            .replace("{email_verification_token}", emailVerificationToken));
         } catch (IOException e)
         {
-            throw new RuntimeException("Failed to read validate account template");
+            throw new RuntimeException("Failed to read verify email template");
         }
     }
 
