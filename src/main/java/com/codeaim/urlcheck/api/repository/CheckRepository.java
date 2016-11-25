@@ -1,6 +1,7 @@
 package com.codeaim.urlcheck.api.repository;
 
 import com.codeaim.urlcheck.api.model.Check;
+import com.codeaim.urlcheck.api.model.Event;
 import com.codeaim.urlcheck.api.model.Status;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Configuration;
@@ -14,6 +15,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.sql.Timestamp;
 import java.util.List;
+import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Configuration
 public class CheckRepository implements ICheckRepository
@@ -27,7 +30,7 @@ public class CheckRepository implements ICheckRepository
     }
 
     @Override
-    public List<Check> getChecks()
+    public List<Check> getChecksByUsername()
     {
         String sql = "SELECT id, name, url, status, interval, disabled, internal FROM \"check\" ORDER BY created DESC;";
 
@@ -35,9 +38,9 @@ public class CheckRepository implements ICheckRepository
     }
 
     @Override
-    public List<Check> getChecks(String username)
+    public List<Check> getChecksByUsername(String username)
     {
-        String sql = "SELECT \"check\".id, name, url, status, interval, disabled, internal FROM \"check\" INNER JOIN \"user\" ON \"check\".user_id = \"user\".id WHERE \"user\".username = :username ORDER BY \"check\".created DESC;";
+        String sql = "SELECT \"check\".id, name, url, status, interval, disabled, \"check\".created, internal FROM \"check\" INNER JOIN \"user\" ON \"check\".user_id = \"user\".id WHERE \"user\".username = :username ORDER BY \"check\".created DESC;";
 
         MapSqlParameterSource parameters = new MapSqlParameterSource()
                 .addValue("username", username);
@@ -47,6 +50,74 @@ public class CheckRepository implements ICheckRepository
                 parameters,
                 mapCheck()
         );
+    }
+
+    @Override
+    public List<Check> getChecksWithEventsByUsername(String username)
+    {
+        List<Check> checks = getChecksByUsername(username);
+
+        String sql = ""
+                + "WITH event AS ( "
+                + "	SELECT "
+                + "		ROW_NUMBER() OVER (PARTITION BY \"result\".check_id ORDER BY \"result\".created DESC), "
+                + "		\"result\".id, "
+                + "		\"result\".check_id, "
+                + "		\"result\".created, "
+                + "		\"result\".status "
+                + "	FROM \"result\" "
+                + "	INNER JOIN \"check\" ON \"result\".check_id = \"check\".id "
+                + "	INNER JOIN \"user\" ON \"check\".user_id = \"user\".id "
+                + "	WHERE "
+                + "		changed = TRUE "
+                + "		AND confirmation = TRUE "
+                + "		AND disabled IS NULL "
+                + "		AND \"user\".username = :username"
+                + ") "
+                + "SELECT "
+                + "	event.id AS \"id\", "
+                + "	event.check_id, "
+                + "	COALESCE(past.created, \"check\".created) AS \"start\", "
+                + "	event.created AS \"end\", "
+                + "	COALESCE(past.status, 'UNKNOWN'::status) AS \"start_status\", "
+                + "	event.status AS \"end_status\" "
+                + "FROM event "
+                + "LEFT OUTER JOIN event AS past ON event.row_number = past.row_number - 1 AND event.check_id = past.check_id "
+                + "LEFT JOIN \"check\" ON event.check_id = \"check\".id "
+                + "ORDER BY event.check_id, event.created";
+
+        MapSqlParameterSource parameters = new MapSqlParameterSource()
+                .addValue("username", username);
+
+        this.namedParameterJdbcTemplate.query(
+                sql,
+                parameters,
+                mapEvent())
+                .stream()
+                .collect(Collectors.groupingBy(Event::getCheckId))
+                .forEach((checkId, events) -> checks
+                        .stream()
+                        .filter(check -> check.getId() == checkId)
+                        .findFirst()
+                        .map(check -> check.setEvents(events)));
+
+        return checks;
+    }
+
+    @Override
+    public Optional<Check> getCheckById(Long id)
+    {
+        String sql = "SELECT \"check\".id, name, url, status, interval, disabled, internal FROM \"check\" WHERE \"check\".id = :id;";
+
+        MapSqlParameterSource parameters = new MapSqlParameterSource()
+                .addValue("id", id);
+
+        return this.namedParameterJdbcTemplate.query(
+                sql,
+                parameters,
+                mapCheck())
+                .stream()
+                .findFirst();
     }
 
     @Override
@@ -174,6 +245,18 @@ public class CheckRepository implements ICheckRepository
                 .setStatus(Status.valueOf(rs.getString("status")))
                 .setInterval(rs.getInt("interval"))
                 .setDisabled(rs.getTimestamp("disabled") != null ? rs.getTimestamp("disabled").toInstant() : null)
-                .setInternal(rs.getBoolean("internal"));
+                .setInternal(rs.getBoolean("internal"))
+                .setCreated(rs.getTimestamp("created").toInstant());
+    }
+
+    private RowMapper<Event> mapEvent()
+    {
+        return (rs, rowNum) -> new Event()
+                .setId(rs.getLong("id"))
+                .setCheckId(rs.getLong("check_id"))
+                .setStart(rs.getTimestamp("start").toInstant())
+                .setEnd(rs.getTimestamp("end").toInstant())
+                .setStartStatus(Status.valueOf(rs.getString("start_status")))
+                .setEndStatus(Status.valueOf(rs.getString("end_status")));
     }
 }

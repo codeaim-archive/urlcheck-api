@@ -36,16 +36,20 @@ public class CheckController
     @RequestMapping(method = RequestMethod.GET)
     public List<Check> getChecks()
     {
-        return checkRepository.getChecks();
+        return checkRepository.getChecksByUsername();
     }
 
     @RequestMapping(value = "/{username:.+}", method = RequestMethod.GET)
     public List<Check> getChecksByUsername(
             @PathVariable(value = "username")
-                    String username
+                    String username,
+            @RequestParam(value = "events", required = false)
+                    boolean events
     )
     {
-        return checkRepository.getChecks(username);
+        return events ?
+                checkRepository.getChecksWithEventsByUsername(username) :
+                checkRepository.getChecksByUsername(username);
     }
 
     @RequestMapping(value = "/{username:.+}", method = RequestMethod.POST)
@@ -58,24 +62,24 @@ public class CheckController
             BindingResult bindingResult
     )
     {
-        if(bindingResult.hasErrors())
+        if (bindingResult.hasErrors())
             return ResponseEntity
                     .unprocessableEntity()
                     .build();
 
         Optional<User> user = userRepository.getUserByUsername(username);
 
-        if(user.isPresent())
+        if (user.isPresent())
         {
             Check createdCheck = checkRepository
                     .createCheck(check.setUserId(user.get().getId()));
             return ResponseEntity
-                    .created(linkTo(methodOn(CheckController.class).getCheckById(user.get().getUsername(), createdCheck.getId())).toUri())
+                    .created(linkTo(methodOn(CheckController.class).getCheckById(username, createdCheck.getId())).toUri())
                     .body(createdCheck);
         }
         return ResponseEntity
-                        .notFound()
-                        .build();
+                .notFound()
+                .build();
     }
 
     @RequestMapping(value = "/{username:.+}/{id}", method = RequestMethod.GET)
@@ -87,22 +91,19 @@ public class CheckController
     )
     {
         Optional<Check> check = checkRepository
-                .getChecks(username)
-                .stream()
-                .filter(x -> x.getId() == id)
-                .findFirst();
+                .getCheckById(id);
 
         return check.isPresent() ? ResponseEntity
                 .ok()
                 .body(check.get()) : ResponseEntity
-            .notFound()
-            .build();
+                .notFound()
+                .build();
     }
 
     @RequestMapping(value = "/{username:.*}/{id}", method = RequestMethod.POST)
     public ResponseEntity<?> updateCheck(
             @PathVariable(value = "username")
-            String username,
+                    String username,
             @RequestBody
             @Valid
                     Check check,
@@ -117,7 +118,7 @@ public class CheckController
         Optional<User> user = userRepository
                 .getUserByUsername(username);
 
-        if(user.isPresent() && checkRepository.checkExists(check.getId()))
+        if (user.isPresent() && checkRepository.checkExists(check.getId()))
         {
             Check updatedCheck = checkRepository
                     .updateCheck(check);
@@ -134,19 +135,15 @@ public class CheckController
 
     @RequestMapping(value = "/{username:.+}/{id}", method = RequestMethod.DELETE)
     public ResponseEntity<?> deleteCheckById(
-            @PathVariable(value = "username")
-                    String username,
             @PathVariable(value = "id")
                     long id
     )
     {
         Optional<Check> check = checkRepository
-                .getChecks(username)
-                .stream()
-                .filter(x -> x.getId() == id)
-                .findFirst();
+                .getCheckById(id);
 
-        if(check.isPresent()) {
+        if (check.isPresent())
+        {
             checkRepository.deleteCheck(id);
 
             return ResponseEntity

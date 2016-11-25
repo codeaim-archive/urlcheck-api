@@ -9,6 +9,7 @@ import lombok.experimental.Accessors;
 
 import javax.validation.constraints.NotNull;
 import java.time.Instant;
+import java.util.List;
 import java.util.Set;
 
 @Getter
@@ -33,4 +34,8 @@ public class Check
     private Set<Header> headers;
     private Instant disabled;
     private boolean internal;
+    private List<Event> events;
+    private Long uptime;
+    private Integer uptimePrecentage;
+    private Instant created;
 }
