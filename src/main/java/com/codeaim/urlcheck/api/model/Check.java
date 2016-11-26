@@ -35,7 +35,10 @@ public class Check
     private Instant disabled;
     private boolean internal;
     private List<Event> events;
-    private Long uptime;
-    private Integer uptimePrecentage;
+    private Double totalMonitored;
+    private Double totalDowntime;
+    private Double totalUptime;
+    private Double totalDowntimePrecentage;
+    private Double totalUptimePrecentage;
     private Instant created;
 }

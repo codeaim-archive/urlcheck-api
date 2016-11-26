@@ -17,4 +17,5 @@ public class Event
     private Instant end;
     private Status startStatus;
     private Status endStatus;
+    private Long duration;
 }

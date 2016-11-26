@@ -14,8 +14,9 @@ import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.sql.Timestamp;
-import java.util.List;
-import java.util.Optional;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Configuration
@@ -80,7 +81,8 @@ public class CheckRepository implements ICheckRepository
                 + "	COALESCE(past.created, \"check\".created) AS \"start\", "
                 + "	event.created AS \"end\", "
                 + "	COALESCE(past.status, 'UNKNOWN'::status) AS \"start_status\", "
-                + "	event.status AS \"end_status\" "
+                + "	event.status AS \"end_status\", "
+                + " COALESCE(EXTRACT(EPOCH FROM (event.created - past.created)), EXTRACT(EPOCH FROM (event.created - \"check\".created))) AS duration "
                 + "FROM event "
                 + "LEFT OUTER JOIN event AS past ON event.row_number = past.row_number - 1 AND event.check_id = past.check_id "
                 + "LEFT JOIN \"check\" ON event.check_id = \"check\".id "
@@ -92,14 +94,65 @@ public class CheckRepository implements ICheckRepository
         this.namedParameterJdbcTemplate.query(
                 sql,
                 parameters,
-                mapEvent())
+                mapEvent()
+        )
                 .stream()
                 .collect(Collectors.groupingBy(Event::getCheckId))
                 .forEach((checkId, events) -> checks
                         .stream()
                         .filter(check -> check.getId() == checkId)
                         .findFirst()
-                        .map(check -> check.setEvents(events)));
+                        .map(check -> check.setEvents(events))
+                        .map(check -> check.setTotalMonitored(check
+                                .getEvents()
+                                .stream()
+                                .mapToDouble(Event::getDuration)
+                                .sum() +
+                                ChronoUnit.SECONDS.between(
+                                        Collections.max(
+                                                check.getEvents(),
+                                                Comparator.comparing(Event::getEnd)
+                                        ).getEnd(),
+                                        Instant.now()
+                                )))
+                        .map(check -> check.setTotalDowntime(check
+                                .getEvents()
+                                .stream()
+                                .filter(x -> (x.getStartStatus() == Status.UNKNOWN && x.getEndStatus() == Status.DOWN) || x.getStartStatus() == Status.DOWN)
+                                .mapToDouble(Event::getDuration).sum() +
+                                (Collections.max(
+                                        check.getEvents(),
+                                        Comparator.comparing(Event::getEnd)
+                                ).getEndStatus() == Status.UNKNOWN || Collections.max(
+                                        check.getEvents(),
+                                        Comparator.comparing(Event::getEnd)
+                                ).getEndStatus() == Status.DOWN ? ChronoUnit.SECONDS.between(
+                                        Collections.max(
+                                                check.getEvents(),
+                                                Comparator.comparing(Event::getEnd)
+                                        ).getEnd(),
+                                        Instant.now()
+                                ) : 0)))
+                        .map(check -> check.setTotalUptime(check
+                                .getEvents()
+                                .stream()
+                                .filter(x -> (x.getStartStatus() == Status.UNKNOWN && x.getEndStatus() == Status.UP) || x.getStartStatus() == Status.UP)
+                                .mapToDouble(Event::getDuration).sum() +
+                                (Collections.max(
+                                        check.getEvents(),
+                                        Comparator.comparing(Event::getEnd)
+                                ).getEndStatus() == Status.UNKNOWN || Collections.max(
+                                        check.getEvents(),
+                                        Comparator.comparing(Event::getEnd)
+                                ).getEndStatus() == Status.UP ? ChronoUnit.SECONDS.between(
+                                        Collections.max(
+                                                check.getEvents(),
+                                                Comparator.comparing(Event::getEnd)
+                                        ).getEnd(),
+                                        Instant.now()
+                                ) : 0)))
+                        .map(check -> check.setTotalUptimePrecentage(100 * (check.getTotalUptime() / check.getTotalMonitored())))
+                        .map(check -> check.setTotalDowntimePrecentage(100 - check.getTotalUptimePrecentage())));
 
         return checks;
     }
@@ -115,7 +168,8 @@ public class CheckRepository implements ICheckRepository
         return this.namedParameterJdbcTemplate.query(
                 sql,
                 parameters,
-                mapCheck())
+                mapCheck()
+        )
                 .stream()
                 .findFirst();
     }
@@ -257,6 +311,7 @@ public class CheckRepository implements ICheckRepository
                 .setStart(rs.getTimestamp("start").toInstant())
                 .setEnd(rs.getTimestamp("end").toInstant())
                 .setStartStatus(Status.valueOf(rs.getString("start_status")))
-                .setEndStatus(Status.valueOf(rs.getString("end_status")));
+                .setEndStatus(Status.valueOf(rs.getString("end_status")))
+                .setDuration(rs.getLong("duration"));
     }
 }
