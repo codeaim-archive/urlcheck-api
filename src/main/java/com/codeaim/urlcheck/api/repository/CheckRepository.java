@@ -33,7 +33,7 @@ public class CheckRepository implements ICheckRepository
     @Override
     public List<Check> getChecksByUsername()
     {
-        String sql = "SELECT id, name, url, status, interval, disabled, internal FROM \"check\" ORDER BY created DESC;";
+        String sql = "SELECT id, name, url, status, interval, disabled, internal, favicon FROM \"check\" ORDER BY created DESC;";
 
         return this.namedParameterJdbcTemplate.query(sql, mapCheck());
     }
@@ -41,7 +41,7 @@ public class CheckRepository implements ICheckRepository
     @Override
     public List<Check> getChecksByUsername(String username)
     {
-        String sql = "SELECT \"check\".id, name, url, status, interval, disabled, \"check\".created, internal FROM \"check\" INNER JOIN \"user\" ON \"check\".user_id = \"user\".id WHERE \"user\".username = :username ORDER BY \"check\".created DESC;";
+        String sql = "SELECT \"check\".id, name, url, status, interval, disabled, \"check\".created, internal, favicon FROM \"check\" INNER JOIN \"user\" ON \"check\".user_id = \"user\".id WHERE \"user\".username = :username ORDER BY \"check\".created DESC;";
 
         MapSqlParameterSource parameters = new MapSqlParameterSource()
                 .addValue("username", username);
@@ -160,7 +160,7 @@ public class CheckRepository implements ICheckRepository
     @Override
     public Optional<Check> getCheckById(Long id)
     {
-        String sql = "SELECT \"check\".id, name, url, status, interval, disabled, internal FROM \"check\" WHERE \"check\".id = :id;";
+        String sql = "SELECT \"check\".id, name, url, status, interval, disabled, internal, favicon FROM \"check\" WHERE \"check\".id = :id;";
 
         MapSqlParameterSource parameters = new MapSqlParameterSource()
                 .addValue("id", id);
@@ -198,14 +198,16 @@ public class CheckRepository implements ICheckRepository
                 + "             FALSE, "
                 + "             1,"
                 + "             NULL,"
-                + "             :internal);";
+                + "             :internal,"
+                + "             :favicon);";
 
         SqlParameterSource insertCheckParameters = new MapSqlParameterSource()
                 .addValue("user_id", check.getUserId())
                 .addValue("name", check.getName())
                 .addValue("url", check.getUrl())
                 .addValue("interval", check.getInterval())
-                .addValue("internal", check.isInternal());
+                .addValue("internal", check.isInternal())
+                .addValue("favicon", check.getFavicon());
 
         this.namedParameterJdbcTemplate.update(
                 insertCheckSql,
@@ -300,7 +302,8 @@ public class CheckRepository implements ICheckRepository
                 .setInterval(rs.getInt("interval"))
                 .setDisabled(rs.getTimestamp("disabled") != null ? rs.getTimestamp("disabled").toInstant() : null)
                 .setInternal(rs.getBoolean("internal"))
-                .setCreated(rs.getTimestamp("created").toInstant());
+                .setCreated(rs.getTimestamp("created").toInstant())
+                .setFavicon(rs.getBytes("favicon"));
     }
 
     private RowMapper<Event> mapEvent()

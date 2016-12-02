@@ -1,5 +1,6 @@
 package com.codeaim.urlcheck.api.controller;
 
+import com.codeaim.urlcheck.api.client.FaviconClient;
 import com.codeaim.urlcheck.api.model.Check;
 import com.codeaim.urlcheck.api.model.User;
 import com.codeaim.urlcheck.api.repository.ICheckRepository;
@@ -23,14 +24,17 @@ public class CheckController
 {
     private final ICheckRepository checkRepository;
     private final IUserRepository userRepository;
+    private final FaviconClient faviconClient;
 
     public CheckController(
             ICheckRepository checkRepository,
-            IUserRepository userRepository
+            IUserRepository userRepository,
+            FaviconClient faviconClient
     )
     {
         this.checkRepository = checkRepository;
         this.userRepository = userRepository;
+        this.faviconClient = faviconClient;
     }
 
     @RequestMapping(method = RequestMethod.GET)
@@ -72,11 +76,17 @@ public class CheckController
         if (user.isPresent())
         {
             Check createdCheck = checkRepository
-                    .createCheck(check.setUserId(user.get().getId()));
+                    .createCheck(check
+                            .setUserId(user.get().getId())
+                            .setFavicon(faviconClient.getFavicon(check.getUrl())));
+
             return ResponseEntity
-                    .created(linkTo(methodOn(CheckController.class).getCheckById(username, createdCheck.getId())).toUri())
+                    .created(linkTo(methodOn(CheckController.class)
+                            .getCheckById(username, createdCheck.getId()))
+                            .toUri())
                     .body(createdCheck);
         }
+
         return ResponseEntity
                 .notFound()
                 .build();

@@ -61,7 +61,7 @@ public class ProbeRepository implements IProbeRepository
                 + "        ORDER BY status = 'UNKNOWN' DESC, refresh ASC LIMIT :candidateLimit "
                 + "	) AS electable "
                 + ") "
-                + "RETURNING \"check\".id, \"check\".\"name\", url, status, latest_result_id, confirming, \"internal\", \"headers\".\"headers\"";
+                + "RETURNING \"check\".id, \"check\".user_id, \"check\".\"name\", url, status, latest_result_id, confirming, \"internal\", \"headers\".\"headers\"";
 
         SqlParameterSource parameters = new MapSqlParameterSource()
                 .addValue("probeName", probe.getName())
@@ -174,6 +174,7 @@ public class ProbeRepository implements IProbeRepository
     {
         return (rs, rowNum) -> new Check()
                 .setId(rs.getLong("id"))
+                .setId(rs.getLong("user_id"))
                 .setName(rs.getString("name"))
                 .setUrl(rs.getString("url"))
                 .setStatus(Status.valueOf(rs.getString("status")))

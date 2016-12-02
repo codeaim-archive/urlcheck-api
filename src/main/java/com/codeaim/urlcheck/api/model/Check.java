@@ -20,7 +20,6 @@ import java.util.Set;
 public class Check
 {
     private long id;
-    @JsonIgnore
     private long userId;
     @NotNull
     private String name;
@@ -41,4 +40,5 @@ public class Check
     private Double totalDowntimePrecentage;
     private Double totalUptimePrecentage;
     private Instant created;
+    private byte[] favicon;
 }

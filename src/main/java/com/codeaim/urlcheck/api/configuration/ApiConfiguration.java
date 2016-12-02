@@ -14,4 +14,5 @@ public class ApiConfiguration
     private String emailEndpoint = "https://api.mailgun.net/v3/urlcheck.io/messages";
     private String emailAuthorizationHeader;
     private String emailVerificationUrl = "http://urlcheck.io/user/{username}/verify?emailVerificationToken={email_verification_token}";
+    private String faviconEndpoint = "https://icons.better-idea.org/icon?url={url}&size=16..32..48";
 }
