@@ -174,7 +174,7 @@ public class ProbeRepository implements IProbeRepository
     {
         return (rs, rowNum) -> new Check()
                 .setId(rs.getLong("id"))
-                .setId(rs.getLong("user_id"))
+                .setUserId(rs.getLong("user_id"))
                 .setName(rs.getString("name"))
                 .setUrl(rs.getString("url"))
                 .setStatus(Status.valueOf(rs.getString("status")))
