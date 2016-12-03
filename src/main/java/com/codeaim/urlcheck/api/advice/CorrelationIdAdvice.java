@@ -1,4 +1,4 @@
-package com.codeaim.urlcheck.api.controller;
+package com.codeaim.urlcheck.api.advice;
 
 import org.springframework.core.MethodParameter;
 import org.springframework.http.MediaType;
