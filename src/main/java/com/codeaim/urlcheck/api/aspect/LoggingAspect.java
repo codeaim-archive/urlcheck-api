@@ -5,8 +5,6 @@ import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.aop.framework.AopProxyUtils;
-import org.springframework.aop.support.AopUtils;
 import org.springframework.stereotype.Component;
 
 @Aspect
@@ -15,8 +13,43 @@ public class LoggingAspect
 {
     private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
-    @Around("execution(* com.codeaim.urlcheck.api.controller.*.*(..))")
-    public Object aroundControllerRequestLogging(ProceedingJoinPoint proceedingJoinPoint) throws Throwable
+    @Around("execution(* com.codeaim.urlcheck.api.controller.CheckController.*(..))")
+    public Object aroundCheckControllerRequestLogging(ProceedingJoinPoint proceedingJoinPoint) throws Throwable
+    {
+        return debugLog(proceedingJoinPoint);
+    }
+
+    @Around("execution(* com.codeaim.urlcheck.api.controller.UserController.*(..))")
+    public Object aroundUserControllerRequestLogging(ProceedingJoinPoint proceedingJoinPoint) throws Throwable
+    {
+        return debugLog(proceedingJoinPoint);
+    }
+
+    @Around("execution(* com.codeaim.urlcheck.api.controller.ElectionController.getCandidates(..))")
+    public Object aroundGetCandidatesRequestLogging(ProceedingJoinPoint proceedingJoinPoint) throws Throwable
+    {
+        return traceLog(proceedingJoinPoint);
+    }
+
+    @Around("execution(* com.codeaim.urlcheck.api.controller.ElectionController.createResults(..))")
+    public Object aroundCreateResultsRequestLogging(ProceedingJoinPoint proceedingJoinPoint) throws Throwable
+    {
+        return debugLog(proceedingJoinPoint);
+    }
+
+    @Around("execution(* com.codeaim.urlcheck.api.controller.ElectionController.expireResults(..))")
+    public Object aroundExpireResultsRequestLogging(ProceedingJoinPoint proceedingJoinPoint) throws Throwable
+    {
+        return debugLog(proceedingJoinPoint);
+    }
+
+    @Around("execution(* com.codeaim.urlcheck.api.repository.*.*(..))")
+    public Object aroundRepositoryRequestLogging(ProceedingJoinPoint proceedingJoinPoint) throws Throwable
+    {
+        return traceLog(proceedingJoinPoint);
+    }
+
+    private Object debugLog(ProceedingJoinPoint proceedingJoinPoint) throws Throwable
     {
         logger.debug(
                 "{} received {} request",
@@ -33,8 +66,7 @@ public class LoggingAspect
         return response;
     }
 
-    @Around("execution(* com.codeaim.urlcheck.api.repository.*.*(..))")
-    public Object aroundRepositoryRequestLogging(ProceedingJoinPoint proceedingJoinPoint) throws Throwable
+    private Object traceLog(ProceedingJoinPoint proceedingJoinPoint) throws Throwable
     {
         logger.trace(
                 "{} received {} request",
