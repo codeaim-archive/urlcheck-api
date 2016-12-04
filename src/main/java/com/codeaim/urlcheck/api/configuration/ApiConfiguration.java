@@ -16,4 +16,5 @@ public class ApiConfiguration
     private String emailAuthorizationHeader;
     private String emailVerificationUrl = "http://urlcheck.io/user/{username}/verify?emailVerificationToken={email_verification_token}";
     private String faviconEndpoint = "https://icons.better-idea.org/icon?url={url}&size=16..32..48";
+    private int metricReportDelay = 60000;
 }

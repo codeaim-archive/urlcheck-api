@@ -1,0 +1,140 @@
+package com.codeaim.urlcheck.api.metric;
+
+import com.codahale.metrics.*;
+import com.codeaim.urlcheck.api.configuration.ApiConfiguration;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.jboss.logging.MDC;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.boot.actuate.metrics.dropwizard.DropwizardMetricServices;
+
+import java.util.AbstractMap;
+import java.util.SortedMap;
+import java.util.UUID;
+import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
+public class MetricReporter extends ScheduledReporter
+{
+    private final Logger logger = LoggerFactory.getLogger(this.getClass());
+
+    private final ApiConfiguration apiConfiguration;
+    private final ObjectMapper objectMapper;
+    private final DropwizardMetricServices metricServices;
+
+    public MetricReporter(
+            ApiConfiguration apiConfiguration,
+            ObjectMapper objectMapper,
+            DropwizardMetricServices metricServices,
+            MetricRegistry metricRegistry
+    )
+    {
+        super(
+                metricRegistry,
+                apiConfiguration.getName(),
+                MetricFilter.ALL,
+                TimeUnit.SECONDS,
+                TimeUnit.SECONDS
+        );
+
+        this.apiConfiguration = apiConfiguration;
+        this.objectMapper = objectMapper;
+        this.metricServices = metricServices;
+    }
+
+    @Override
+    public void report(
+            SortedMap<String, Gauge> gauges,
+            SortedMap<String, Counter> counters,
+            SortedMap<String, Histogram> histograms,
+            SortedMap<String, Meter> meters,
+            SortedMap<String, Timer> timers
+    )
+    {
+        MDC.put("name", apiConfiguration.getName());
+        MDC.put("correlationId", UUID.randomUUID().toString());
+
+        try
+        {
+            String report = objectMapper.writeValueAsString(
+                    Stream
+                            .of(
+                                    mapGauges(gauges),
+                                    mapCounters(counters),
+                                    mapHistograms(histograms),
+                                    mapMeters(meters),
+                                    mapTimers(timers)
+                            )
+                            .flatMap(x -> x)
+                            .collect(Collectors.toMap(
+                                    AbstractMap.SimpleEntry::getKey,
+                                    AbstractMap.SimpleEntry::getValue
+                            )));
+
+            logger.info("Metrics report: {}", report);
+
+            counters.keySet().forEach(metricServices::reset);
+
+        } catch (JsonProcessingException ex)
+        {
+            logger.error("MetricReporter exception thrown processing metrcs", ex);
+        }
+    }
+
+    private Stream<AbstractMap.SimpleEntry<String, Object>> mapTimers(SortedMap<String, Timer> timers)
+    {
+        return timers
+                .entrySet()
+                .stream()
+                .map(x -> new AbstractMap.SimpleEntry<>(
+                        x.getKey(),
+                        String.valueOf(x.getValue().getCount())
+                ));
+    }
+
+    private Stream<AbstractMap.SimpleEntry<String, Object>> mapMeters(SortedMap<String, Meter> meters)
+    {
+        return meters
+                .entrySet()
+                .stream()
+                .map(x -> new AbstractMap.SimpleEntry<>(
+                        x.getKey(),
+                        x.getValue().getCount()
+                ));
+    }
+
+    private Stream<AbstractMap.SimpleEntry<String, Object>> mapHistograms(SortedMap<String, Histogram> histograms)
+    {
+        return histograms
+                .entrySet()
+                .stream()
+                .map(x -> new AbstractMap.SimpleEntry<>(
+                        x.getKey(),
+                        x.getValue().getCount()
+                ));
+    }
+
+    private Stream<AbstractMap.SimpleEntry<String, Object>> mapCounters(SortedMap<String, Counter> counters)
+    {
+        return counters
+                .entrySet()
+                .stream()
+                .map(x -> new AbstractMap.SimpleEntry<>(
+                        x.getKey(),
+                        x.getValue().getCount()
+                ));
+    }
+
+    private Stream<AbstractMap.SimpleEntry<String, Object>> mapGauges(SortedMap<String, Gauge> gauges)
+    {
+        return gauges
+                .entrySet()
+                .stream()
+                .map(x -> new AbstractMap.SimpleEntry<>(
+                        x.getKey(),
+                        x.getValue().getValue()
+                ));
+    }
+}
