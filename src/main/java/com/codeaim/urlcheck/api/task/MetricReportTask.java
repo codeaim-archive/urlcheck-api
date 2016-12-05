@@ -1,4 +1,5 @@
-package com.codeaim.urlcheck.api.metric;
+package com.codeaim.urlcheck.api.task;
+
 
 import com.codahale.metrics.*;
 import com.codeaim.urlcheck.api.configuration.ApiConfiguration;
@@ -7,51 +8,41 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.jboss.logging.MDC;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.actuate.metrics.dropwizard.DropwizardMetricServices;
+import org.springframework.stereotype.Component;
 
 import java.util.AbstractMap;
 import java.util.SortedMap;
 import java.util.UUID;
-import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-public class MetricReporter extends ScheduledReporter
+@Component
+public class MetricReportTask
 {
     private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
     private final ApiConfiguration apiConfiguration;
     private final ObjectMapper objectMapper;
     private final DropwizardMetricServices metricServices;
+    private final MetricRegistry metricRegistry;
 
-    public MetricReporter(
-            ApiConfiguration apiConfiguration,
-            ObjectMapper objectMapper,
-            DropwizardMetricServices metricServices,
-            MetricRegistry metricRegistry
+    @Autowired
+    public MetricReportTask(
+            final ApiConfiguration apiConfiguration,
+            final ObjectMapper objectMapper,
+            final DropwizardMetricServices metricServices,
+            final MetricRegistry metricRegistry
     )
     {
-        super(
-                metricRegistry,
-                apiConfiguration.getName(),
-                MetricFilter.ALL,
-                TimeUnit.SECONDS,
-                TimeUnit.SECONDS
-        );
-
         this.apiConfiguration = apiConfiguration;
         this.objectMapper = objectMapper;
         this.metricServices = metricServices;
+        this.metricRegistry = metricRegistry;
     }
 
-    @Override
-    public void report(
-            SortedMap<String, Gauge> gauges,
-            SortedMap<String, Counter> counters,
-            SortedMap<String, Histogram> histograms,
-            SortedMap<String, Meter> meters,
-            SortedMap<String, Timer> timers
-    )
+    public void run()
     {
         MDC.put("name", apiConfiguration.getName());
         MDC.put("correlationId", UUID.randomUUID().toString());
@@ -63,11 +54,11 @@ public class MetricReporter extends ScheduledReporter
             String report = objectMapper.writeValueAsString(
                     Stream
                             .of(
-                                    mapGauges(gauges),
-                                    mapCounters(counters),
-                                    mapHistograms(histograms),
-                                    mapMeters(meters),
-                                    mapTimers(timers)
+                                    mapGauges(metricRegistry.getGauges()),
+                                    mapCounters(metricRegistry.getCounters()),
+                                    mapHistograms(metricRegistry.getHistograms()),
+                                    mapMeters(metricRegistry.getMeters()),
+                                    mapTimers(metricRegistry.getTimers())
                             )
                             .flatMap(x -> x)
                             .collect(Collectors.toMap(
@@ -77,13 +68,14 @@ public class MetricReporter extends ScheduledReporter
 
             logger.info("Metrics report: {}", report);
 
-            counters.keySet().forEach(metricServices::reset);
+            metricRegistry.getCounters().keySet().forEach(metricServices::reset);
 
         } catch (JsonProcessingException ex)
         {
             logger.error("MetricReporter exception thrown processing metrcs", ex);
         }
     }
+
 
     private Stream<AbstractMap.SimpleEntry<String, Object>> mapTimers(SortedMap<String, Timer> timers)
     {
