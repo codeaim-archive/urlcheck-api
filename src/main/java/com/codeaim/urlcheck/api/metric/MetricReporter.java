@@ -56,6 +56,8 @@ public class MetricReporter extends ScheduledReporter
         MDC.put("name", apiConfiguration.getName());
         MDC.put("correlationId", UUID.randomUUID().toString());
 
+        logger.debug("MetricReporter received report request");
+
         try
         {
             String report = objectMapper.writeValueAsString(
