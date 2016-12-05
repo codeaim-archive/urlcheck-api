@@ -13,19 +13,23 @@ import org.springframework.scheduling.annotation.Scheduled;
 @ConditionalOnProperty(name = "urlcheck.api.scheduleDisabled", havingValue = "false", matchIfMissing = true)
 public class ScheduleConfiguration
 {
+    private ApiConfiguration apiConfiguration;
     private MetricReportTask metricReportTask;
 
     @Autowired
     public ScheduleConfiguration(
+            ApiConfiguration apiConfiguration,
             MetricReportTask metricReportTask
     )
     {
+        this.apiConfiguration = apiConfiguration;
         this.metricReportTask = metricReportTask;
     }
 
     @Scheduled(fixedDelayString = "${urlcheck.api.metricReportDelay}")
     public void metricReportTask()
     {
-        metricReportTask.run();
+        if(!apiConfiguration.isMetricReportTaskDisabled())
+            metricReportTask.run();
     }
 }
