@@ -25,12 +25,12 @@ public class MetricAspect
             MetricRegistry metricRegistry
     )
     {
-        this.getCandidates = metricRegistry.timer("get-candidates");
-        this.getCandidatesCount = metricRegistry.counter("get-candidates-count");
-        this.createResults = metricRegistry.timer("create-results");
-        this.createResultsCount = metricRegistry.counter("create-results-count");
-        this.expireResults = metricRegistry.timer("create-results");
-        this.expireResultsCount = metricRegistry.counter("create-results-count");
+        this.getCandidates = metricRegistry.timer("api-get-candidates");
+        this.getCandidatesCount = metricRegistry.counter("api-get-candidates-count");
+        this.createResults = metricRegistry.timer("api-create-results");
+        this.createResultsCount = metricRegistry.counter("api-create-results-count");
+        this.expireResults = metricRegistry.timer("api-expire-results");
+        this.expireResultsCount = metricRegistry.counter("api-expire-results-count");
     }
 
     @Around("execution(* com.codeaim.urlcheck.api.repository.ProbeRepository.getCandidates(..))")
